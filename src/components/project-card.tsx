@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { PortfolioItem } from '@/types';
+import { useVanta } from '@/lib/vanta-context';
 import { Eye, Heart, ExternalLink, Play, Sparkles, Maximize2 } from 'lucide-react';
 
 interface ProjectCardProps {
@@ -17,6 +18,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onClick,
   showArtist = true,
 }) => {
+  const { toggleLike, isLiked } = useVanta();
+  const liked = isLiked(project.id);
   return (
     <motion.div
       whileHover={{ y: -6, scale: 1.01 }}
@@ -60,16 +63,34 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           </div>
         </div>
 
-        {/* View / Likes on bottom bar */}
-        <div className="absolute bottom-3 right-3.5 flex items-center gap-3 text-xs text-zinc-200 font-mono">
-          <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10">
+        {/* View / Likes on bottom bar with Interactive Heart Button */}
+        <div className="absolute bottom-3 right-3.5 flex items-center gap-2 text-xs text-zinc-200 font-mono z-20">
+          <span className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 text-zinc-300">
             <Eye className="w-3.5 h-3.5 text-zinc-400" />
             {project.views?.toLocaleString() || '1.2K'}
           </span>
-          <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10">
-            <Heart className="w-3.5 h-3.5 text-red-400" />
-            {project.likes?.toLocaleString() || '240'}
-          </span>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.8 }}
+            whileHover={{ scale: 1.08 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLike(project.id);
+            }}
+            className={`flex items-center gap-1.5 backdrop-blur-md px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+              liked
+                ? 'bg-red-500/25 border-red-500/60 text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.4)]'
+                : 'bg-black/70 border-white/10 text-zinc-300 hover:border-red-400/50 hover:text-red-400'
+            }`}
+            title={liked ? 'Unlike artwork' : 'Like artwork'}
+          >
+            <Heart
+              className={`w-3.5 h-3.5 transition-all ${
+                liked ? 'fill-red-500 text-red-500 scale-110' : 'text-zinc-400'
+              }`}
+            />
+            <span className="font-semibold">{project.likes?.toLocaleString() || '0'}</span>
+          </motion.button>
         </div>
       </div>
 

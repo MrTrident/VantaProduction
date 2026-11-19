@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PortfolioItem } from '@/types';
+import { useVanta } from '@/lib/vanta-context';
 import { X, ExternalLink, Eye, Heart, Calendar, Sparkles, User, ArrowRight, Share2, Check } from 'lucide-react';
 
 interface ProjectModalProps {
@@ -12,9 +13,12 @@ interface ProjectModalProps {
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({ project, onClose }) => {
+  const { toggleLike, isLiked } = useVanta();
   const [copied, setCopied] = React.useState(false);
 
   if (!project) return null;
+
+  const liked = isLiked(project.id);
 
   const handleCopyLink = () => {
     if (typeof window !== 'undefined') {
@@ -75,6 +79,21 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ project, onClose }) 
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.85 }}
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => toggleLike(project.id)}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-mono font-medium transition-all ${
+                    liked
+                      ? 'bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                      : 'bg-zinc-900 border-white/15 text-zinc-200 hover:text-white hover:border-white'
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 transition-transform ${liked ? 'fill-red-500 text-red-500 scale-110' : 'text-zinc-400'}`} />
+                  {liked ? 'Liked' : 'Like'} ({project.likes?.toLocaleString() || '0'})
+                </motion.button>
+
                 <button
                   onClick={handleCopyLink}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-white/15 text-zinc-200 hover:text-white hover:border-white text-xs font-mono font-medium transition-all"

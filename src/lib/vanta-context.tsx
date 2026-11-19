@@ -69,6 +69,11 @@ interface VantaContextType {
   auditLogs: AuditLog[];
   homepageConfig: HomepageConfig;
 
+  // Like System
+  userLikes: string[];
+  toggleLike: (projectId: string) => void;
+  isLiked: (projectId: string) => boolean;
+
   // Actions
   updateHomepageConfig: (newConfig: Partial<HomepageConfig>) => void;
   addPortfolioItem: (item: Omit<PortfolioItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -147,6 +152,43 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
   const [homepageConfig, setHomepageConfig] = useState<HomepageConfig>(INITIAL_HOMEPAGE_CONFIG);
+  const [userLikes, setUserLikes] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('vanta_user_likes');
+      if (stored) {
+        setUserLikes(JSON.parse(stored));
+      }
+    } catch {}
+  }, []);
+
+  const toggleLike = (projectId: string) => {
+    setUserLikes(prev => {
+      const isCurrentlyLiked = prev.includes(projectId);
+      const updated = isCurrentlyLiked ? prev.filter(id => id !== projectId) : [...prev, projectId];
+      try {
+        localStorage.setItem('vanta_user_likes', JSON.stringify(updated));
+      } catch {}
+
+      setPortfolioItems(items =>
+        items.map(item => {
+          if (item.id === projectId) {
+            const currentLikes = item.likes || 0;
+            return {
+              ...item,
+              likes: isCurrentlyLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1,
+            };
+          }
+          return item;
+        })
+      );
+
+      return updated;
+    });
+  };
+
+  const isLiked = (projectId: string) => userLikes.includes(projectId);
 
   // Attempt to sync from Supabase if tables exist
   useEffect(() => {
@@ -267,9 +309,47 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateArtistProfile = (userId: string, updates: Partial<ArtistProfile>) => {
-    setArtistProfiles(prev =>
-      prev.map(p => (p.userId === userId ? { ...p, ...updates } : p))
-    );
+    setArtistProfiles(prev => {
+      const exists = prev.some(p => p.userId === userId);
+      if (!exists) {
+        const user = profiles.find(p => p.id === userId) || currentUser;
+        const newProfile: ArtistProfile = {
+          userId,
+          username: user?.username || 'artist',
+          displayName: user?.displayName || 'Artist',
+          avatarUrl: user?.avatarUrl || '/images/vanta-logo.jpg',
+          bio: user?.bio || '',
+          specialty: 'Digital Creative',
+          yearsExperience: 2,
+          bannerUrl: '/images/vanta-welcome-banner.jpg',
+          themeMode: 'dark',
+          layoutMode: 'grid',
+          isFeatured: true,
+          isPublic: true,
+          availabilityStatus: 'available',
+          socialLinks: {},
+          displayOrder: prev.length + 1,
+          ...updates,
+        };
+        return [...prev, newProfile];
+      }
+      return prev.map(p => (p.userId === userId ? { ...p, ...updates } : p));
+    });
+
+    // Cascade avatar/name changes to portfolio items authored by this user
+    if (updates.avatarUrl || updates.displayName) {
+      setPortfolioItems(prev =>
+        prev.map(item =>
+          item.artistId === userId
+            ? {
+                ...item,
+                ...(updates.avatarUrl ? { artistAvatarUrl: updates.avatarUrl } : {}),
+                ...(updates.displayName ? { artistDisplayName: updates.displayName } : {}),
+              }
+            : item
+        )
+      );
+    }
     logAuditEvent('ARTIST_PROFILE_UPDATED', 'ArtistProfile', updates, userId);
   };
 
@@ -279,6 +359,32 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
     if (currentUser?.id === userId) {
       setCurrentUser(prev => (prev ? { ...prev, ...updates } : null));
+    }
+    // Cascade avatar/name/bio changes across artist profile and portfolio items
+    if (updates.avatarUrl || updates.displayName || updates.bio) {
+      setPortfolioItems(prev =>
+        prev.map(item =>
+          item.artistId === userId
+            ? {
+                ...item,
+                ...(updates.avatarUrl ? { artistAvatarUrl: updates.avatarUrl } : {}),
+                ...(updates.displayName ? { artistDisplayName: updates.displayName } : {}),
+              }
+            : item
+        )
+      );
+      setArtistProfiles(prev =>
+        prev.map(a =>
+          a.userId === userId
+            ? {
+                ...a,
+                ...(updates.avatarUrl ? { avatarUrl: updates.avatarUrl } : {}),
+                ...(updates.displayName ? { displayName: updates.displayName } : {}),
+                ...(updates.bio ? { bio: updates.bio } : {}),
+              }
+            : a
+        )
+      );
     }
     logAuditEvent('USER_PROFILE_UPDATED', 'Profile', updates, userId);
   };
@@ -568,6 +674,9 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         notifications,
         auditLogs,
         homepageConfig,
+        userLikes,
+        toggleLike,
+        isLiked,
         updateHomepageConfig,
         addPortfolioItem,
         updatePortfolioItem,

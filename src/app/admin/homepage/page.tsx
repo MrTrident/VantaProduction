@@ -36,7 +36,22 @@ export default function AdminHomepageCMSPage() {
   };
 
   const toggleSection = (key: keyof typeof sections) => {
-    setSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    const updated = { ...sections, [key]: !sections[key] };
+    setSections(updated);
+    // Instant real-time update without requiring page reload
+    updateHomepageConfig({ sectionsVisibility: updated });
+  };
+
+  const SECTION_LABELS: Record<string, { title: string; desc: string }> = {
+    hero: { title: 'Cinematic Hero Headline', desc: 'Main banner with headline and CTA buttons' },
+    floating: { title: 'Floating Artwork System', desc: 'Floating portfolio pieces around the hero perimeter' },
+    workRibbon: { title: 'Motion Work Ribbon', desc: 'Infinite dual-track sideways moving thumbnail marquee' },
+    work: { title: 'Selected Work Gallery', desc: 'Main portfolio showcase with category filter' },
+    artists: { title: 'Featured Artists Showcase', desc: 'Verified talent cards and specialty previews' },
+    creators: { title: 'Creators We Work With', desc: 'Public client creator showcase and subscriber metrics' },
+    services: { title: 'Production Services', desc: 'Network service offerings and delivery specs' },
+    about: { title: 'About & Network Ethos', desc: 'Vanta Production principles and verification' },
+    footer: { title: 'Global Footer', desc: 'Social links, navigation and copyright' },
   };
 
   return (
@@ -193,22 +208,30 @@ export default function AdminHomepageCMSPage() {
             03 // Public Sections Visibility
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {Object.keys(sections).map((key) => {
               const isEnabled = sections[key as keyof typeof sections];
+              const meta = SECTION_LABELS[key] || { title: `${key} section`, desc: 'Manage section display' };
               return (
                 <div
                   key={key}
                   onClick={() => toggleSection(key as any)}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between text-xs font-mono uppercase ${
+                  className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
                     isEnabled
-                      ? 'border-white bg-white/10 text-white font-bold'
-                      : 'border-zinc-800 bg-zinc-900/40 text-zinc-500'
+                      ? 'border-white/30 bg-white/10 text-white shadow-lg'
+                      : 'border-zinc-800 bg-zinc-900/40 text-zinc-500 opacity-60'
                   }`}
                 >
-                  <span>{key} section</span>
-                  <span className={`text-[10px] ${isEnabled ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                    {isEnabled ? 'VISIBLE' : 'HIDDEN'}
+                  <div className="pr-3">
+                    <p className="text-xs font-mono font-bold uppercase tracking-wide text-white">{meta.title}</p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">{meta.desc}</p>
+                  </div>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded border uppercase shrink-0 ${
+                    isEnabled
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 font-bold'
+                      : 'bg-zinc-800 text-zinc-500 border-zinc-700'
+                  }`}>
+                    {isEnabled ? 'ENABLED' : 'DISABLED'}
                   </span>
                 </div>
               );

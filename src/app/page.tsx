@@ -9,6 +9,7 @@ import { FloatingArtwork } from '@/components/floating-artwork';
 import { ProjectCard } from '@/components/project-card';
 import { ProjectModal } from '@/components/project-modal';
 import { ArtistCard } from '@/components/artist-card';
+import { WorkRibbon } from '@/components/work-ribbon';
 import { useVanta } from '@/lib/vanta-context';
 import { PortfolioItem } from '@/types';
 import {
@@ -96,29 +97,12 @@ export default function HomePage() {
                 Meet Our Artists
               </Link>
             </div>
-
-            {/* Quick Stats Banner (Glass card style) */}
-            <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 border border-white/10 rounded-2xl bg-zinc-950/60 backdrop-blur-xl p-6 max-w-3xl mx-auto shadow-2xl">
-              <div className="text-center sm:text-left">
-                <p className="text-2xl sm:text-3xl font-black font-mono text-white">500M+</p>
-                <p className="text-xs font-mono text-zinc-400 uppercase mt-0.5">Views Driven</p>
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-2xl sm:text-3xl font-black font-mono text-white">100%</p>
-                <p className="text-xs font-mono text-zinc-400 uppercase mt-0.5">Vetted Talent</p>
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-2xl sm:text-3xl font-black font-mono text-white">Top 1%</p>
-                <p className="text-xs font-mono text-zinc-400 uppercase mt-0.5">Click-Through Rate</p>
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-2xl sm:text-3xl font-black font-mono text-white">4K UHD</p>
-                <p className="text-xs font-mono text-zinc-400 uppercase mt-0.5">Delivery Standard</p>
-              </div>
-            </div>
           </motion.div>
         </section>
       )}
+
+      {/* Infinite Motion Work Ribbon (SparkyGFX Works & Systems) */}
+      <WorkRibbon onProjectClick={(item) => setSelectedProject(item)} />
 
       {/* Selected Work Section */}
       {homepageConfig.sectionsVisibility?.work && (

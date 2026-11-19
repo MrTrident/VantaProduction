@@ -114,6 +114,7 @@ export interface ArtistProfile {
     youtube?: string;
     instagram?: string;
     portfolio?: string;
+    behance?: string;
   };
   displayOrder: number;
 }
@@ -296,6 +297,7 @@ export interface HomepageConfig {
   sectionsVisibility: {
     hero: boolean;
     floating: boolean;
+    workRibbon?: boolean;
     work: boolean;
     artists: boolean;
     creators: boolean;

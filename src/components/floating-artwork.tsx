@@ -16,24 +16,20 @@ interface FloatingCardProps {
   onSelect?: (item: PortfolioItem) => void;
 }
 
-// Preset positioning coordinates spread around the hero periphery to ensure zero obstruction of central headline
+// Preset positioning coordinates pushed strictly to the outer flanks so they never obstruct central typography
 const CARD_LAYOUTS = [
-  // Top Left
-  { top: '8%', left: '4%', width: 'w-48 sm:w-60 md:w-72', rotate: '-4deg', depth: 0.035, delay: '0s' },
-  // Top Right
-  { top: '10%', right: '4%', width: 'w-44 sm:w-56 md:w-68', rotate: '3deg', depth: 0.045, delay: '1.2s' },
-  // Middle Left
-  { top: '48%', left: '2%', width: 'w-40 sm:w-52 md:w-64', rotate: '2deg', depth: 0.025, delay: '2.4s' },
-  // Middle Right
-  { top: '45%', right: '2%', width: 'w-48 sm:w-60 md:w-76', rotate: '-3deg', depth: 0.04, delay: '0.8s' },
-  // Bottom Left
-  { bottom: '6%', left: '8%', width: 'w-44 sm:w-56 md:w-68', rotate: '-2deg', depth: 0.03, delay: '1.8s' },
-  // Bottom Right
-  { bottom: '8%', right: '8%', width: 'w-48 sm:w-64 md:w-72', rotate: '4deg', depth: 0.05, delay: '2.1s' },
-  // Far Top Center-Left
-  { top: '3%', left: '26%', width: 'w-36 sm:w-48 md:w-56', rotate: '1deg', depth: 0.02, delay: '3s' },
-  // Far Top Center-Right
-  { top: '4%', right: '24%', width: 'w-36 sm:w-44 md:w-52', rotate: '-2deg', depth: 0.025, delay: '1.5s' },
+  // Top Outer Left
+  { top: '6%', left: '1.5%', width: 'hidden md:block w-52 lg:w-64', rotate: '-5deg', depth: 0.025, delay: '0s' },
+  // Top Outer Right
+  { top: '7%', right: '1.5%', width: 'hidden md:block w-52 lg:w-64', rotate: '4deg', depth: 0.03, delay: '1.2s' },
+  // Lower Outer Left
+  { bottom: '8%', left: '2%', width: 'hidden md:block w-56 lg:w-72', rotate: '3deg', depth: 0.02, delay: '2.4s' },
+  // Lower Outer Right
+  { bottom: '7%', right: '2%', width: 'hidden md:block w-56 lg:w-72', rotate: '-4deg', depth: 0.035, delay: '0.8s' },
+  // Far Flank Left
+  { top: '40%', left: '-2%', width: 'hidden xl:block w-48', rotate: '-7deg', depth: 0.015, delay: '1.8s' },
+  // Far Flank Right
+  { top: '42%', right: '-2%', width: 'hidden xl:block w-48', rotate: '6deg', depth: 0.02, delay: '2.1s' },
 ];
 
 export const FloatingArtwork: React.FC<{ onProjectClick?: (item: PortfolioItem) => void }> = ({ onProjectClick }) => {

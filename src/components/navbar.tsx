@@ -16,54 +16,65 @@ import {
   Sparkles,
   LayoutDashboard,
   ArrowRight,
+  User,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
-  const { currentUser, isFounder, isAdmin, logout } = useVanta();
+  const { currentUser, isFounder, isAdmin, logout, homepageConfig } = useVanta();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
+  // Exclude Creators if disabled by admin/user preference
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Work', href: '/work' },
     { name: 'Artists', href: '/artists' },
-    { name: 'Creators', href: '/creators' },
+    ...(homepageConfig?.sectionsVisibility?.creators ? [{ name: 'Creators', href: '/creators' }] : []),
     { name: 'Services', href: '/services' },
     { name: 'About', href: '/about' },
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/75 backdrop-blur-xl shadow-lg transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full px-3 sm:px-6 pt-3 pb-2 pointer-events-none">
+      <div className="max-w-6xl mx-auto h-16 rounded-full border border-white/[0.12] bg-black/65 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.8),0_0_20px_rgba(255,255,255,0.03)] px-4 sm:px-6 flex items-center justify-between pointer-events-auto transition-all">
         {/* Brand Logo */}
-        <VantaLogo size="md" />
+        <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <VantaLogo size="sm" />
+        </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-md">
+        <nav className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.name}
                 href={link.href}
-                className={`relative px-4 py-1.5 text-sm font-medium tracking-wide transition-all duration-200 rounded-full ${
+                className={`relative px-4 py-1.5 text-xs font-mono uppercase tracking-[0.16em] transition-all duration-200 rounded-full ${
                   isActive
-                    ? 'text-white font-semibold bg-white/15 shadow-sm'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                    ? 'text-white font-bold bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.08)]'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
                 }`}
               >
                 {link.name}
+                {isActive && (
+                  <motion.div
+                    layoutId="navbar-indicator"
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_#ffffff]"
+                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  />
+                )}
               </Link>
             );
           })}
         </nav>
 
         {/* Actions & User State */}
-        <div className="hidden lg:flex items-center gap-3.5">
+        <div className="hidden lg:flex items-center gap-3">
           <Link
             href="/apply"
-            className="text-xs uppercase font-mono tracking-wider px-5 py-2.5 rounded-xl border border-white/20 text-zinc-200 hover:text-white hover:border-white/60 bg-white/5 hover:bg-white/10 transition-all shadow-sm"
+            className="text-xs uppercase font-mono tracking-wider px-4 py-2 rounded-full border border-white/15 text-zinc-300 hover:text-white hover:border-white/40 bg-white/[0.03] hover:bg-white/[0.08] transition-all hover:scale-105 active:scale-95"
           >
             Join Vanta
           </Link>
@@ -72,23 +83,18 @@ export const Navbar: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-zinc-900/90 border border-white/20 hover:border-white/50 transition-all text-xs"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-zinc-900/90 border border-white/20 hover:border-white/50 transition-all text-xs"
               >
                 <img
                   src={currentUser.avatarUrl}
                   alt={currentUser.displayName}
-                  className="w-7 h-7 rounded-full object-cover border border-white/30"
+                  className="w-6 h-6 rounded-full object-cover border border-white/30"
                 />
-                <div className="text-left">
-                  <span className="font-bold text-white max-w-[110px] truncate block text-xs">
-                    {currentUser.displayName}
-                  </span>
-                  <span className="text-[10px] text-zinc-400 font-mono block">
-                    {currentUser.positionTitle || 'Member'}
-                  </span>
-                </div>
+                <span className="font-bold text-white max-w-[90px] truncate block text-xs font-mono">
+                  {currentUser.displayName}
+                </span>
                 {currentUser.isFounder && (
-                  <span className="bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded font-mono font-bold border border-amber-400/30">
+                  <span className="bg-amber-400/20 text-amber-300 text-[9px] px-1.5 py-0.5 rounded font-mono font-bold border border-amber-400/30">
                     FOUNDER
                   </span>
                 )}
@@ -135,6 +141,15 @@ export const Navbar: React.FC = () => {
                       </Link>
 
                       <Link
+                        href="/dashboard/profile"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-zinc-200 hover:text-white hover:bg-zinc-900 rounded-xl font-medium transition-colors"
+                      >
+                        <User className="w-4 h-4 text-emerald-400" />
+                        Edit Profile & Avatar
+                      </Link>
+
+                      <Link
                         href={`/artists/${currentUser.username}`}
                         onClick={() => setUserDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-zinc-200 hover:text-white hover:bg-zinc-900 rounded-xl font-medium transition-colors"
@@ -151,7 +166,7 @@ export const Navbar: React.FC = () => {
                         logout();
                         setUserDropdownOpen(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-red-400 hover:bg-red-950/40 rounded-xl transition-colors font-mono"
+                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-red-400 hover:bg-red-950/40 rounded-xl transition-colors font-mono cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign Out
@@ -163,7 +178,7 @@ export const Navbar: React.FC = () => {
           ) : (
             <Link
               href="/login"
-              className="text-xs uppercase font-mono font-bold tracking-wider px-6 py-2.5 bg-white text-black rounded-xl hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95"
+              className="text-xs uppercase font-mono font-bold tracking-wider px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95"
             >
               Sign In
             </Link>
@@ -174,10 +189,10 @@ export const Navbar: React.FC = () => {
         <div className="flex md:hidden">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2.5 rounded-xl bg-zinc-900/90 text-zinc-300 hover:text-white border border-white/10"
+            className="p-2 rounded-full bg-zinc-900/90 text-zinc-300 hover:text-white border border-white/10"
             aria-label="Toggle Menu"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
@@ -186,10 +201,10 @@ export const Navbar: React.FC = () => {
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-b border-white/10 bg-zinc-950/95 backdrop-blur-2xl px-5 py-6 space-y-4"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="md:hidden mt-2 max-w-6xl mx-auto rounded-3xl border border-white/10 bg-zinc-950/95 backdrop-blur-2xl px-5 py-6 space-y-4 shadow-2xl pointer-events-auto"
           >
             <div className="grid grid-cols-2 gap-2">
               {navLinks.map((link) => (
@@ -197,8 +212,10 @@ export const Navbar: React.FC = () => {
                   key={link.name}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-sm font-medium py-2.5 px-3 rounded-xl transition-colors ${
-                    pathname === link.href ? 'bg-white text-black font-bold' : 'text-zinc-300 hover:bg-zinc-900'
+                  className={`text-xs font-mono uppercase tracking-wider py-2.5 px-3 rounded-xl transition-colors ${
+                    pathname === link.href
+                      ? 'bg-white/15 text-white font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   {link.name}
@@ -206,59 +223,27 @@ export const Navbar: React.FC = () => {
               ))}
             </div>
 
-            <div className="border-t border-white/10 pt-4 flex flex-col gap-2.5">
+            <div className="pt-4 border-t border-white/10 flex flex-col gap-2.5">
               <Link
                 href="/apply"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-center py-3 px-4 rounded-xl border border-white/20 text-white text-xs font-mono font-semibold uppercase tracking-wider"
+                className="w-full text-center text-xs uppercase font-mono py-2.5 rounded-xl border border-white/20 text-zinc-200 hover:text-white bg-white/5"
               >
-                Join Vanta Network
+                Join Vanta
               </Link>
-
               {currentUser ? (
-                <>
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900 border border-white/10">
-                    <img
-                      src={currentUser.avatarUrl}
-                      alt={currentUser.displayName}
-                      className="w-9 h-9 rounded-full object-cover border border-white/20"
-                    />
-                    <div>
-                      <p className="text-sm font-bold text-white font-mono">{currentUser.displayName}</p>
-                      <p className="text-xs text-zinc-400">{currentUser.positionTitle}</p>
-                    </div>
-                  </div>
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="text-center py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold"
-                    >
-                      Admin Dashboard
-                    </Link>
-                  )}
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-center py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs font-mono font-medium"
-                  >
-                    Artist Workspace
-                  </Link>
-                  <button
-                    onClick={() => {
-                      logout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="text-center py-2 text-xs text-red-400 font-mono"
-                  >
-                    Sign Out
-                  </button>
-                </>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center text-xs uppercase font-mono font-bold py-2.5 rounded-xl bg-white text-black"
+                >
+                  Go to Dashboard
+                </Link>
               ) : (
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-center py-3 px-4 rounded-xl bg-white text-black text-xs font-mono font-bold uppercase tracking-wider"
+                  className="w-full text-center text-xs uppercase font-mono font-bold py-2.5 rounded-xl bg-white text-black"
                 >
                   Sign In
                 </Link>
