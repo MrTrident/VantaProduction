@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { VantaLogo } from '@/components/vanta-logo';
 import { useVanta } from '@/lib/vanta-context';
-import { Shield, Sparkles, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Lock, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +16,10 @@ export default function LoginPage() {
 
   const handleStandardLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const found = profiles.find((p) => p.email.toLowerCase() === email.toLowerCase());
+    const cleanInput = email.trim().toLowerCase();
+    const found = profiles.find(
+      (p) => p.email.toLowerCase() === cleanInput || p.username.toLowerCase() === cleanInput
+    );
     if (found) {
       setCurrentUserById(found.id);
       if (found.isFounder || found.positionTitle?.includes('Executive') || found.positionTitle?.includes('Head')) {
@@ -27,11 +30,6 @@ export default function LoginPage() {
     } else {
       setError('Invalid credentials or unregistered account.');
     }
-  };
-
-  const handleQuickLogin = (userId: string, targetPath: string) => {
-    setCurrentUserById(userId);
-    router.push(targetPath);
   };
 
   return (
@@ -61,14 +59,14 @@ export default function LoginPage() {
           <form onSubmit={handleStandardLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-mono uppercase text-zinc-400 mb-1.5">
-                Email Address
+                Email Address or Username
               </label>
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="smiiko@vantaproduction.com"
+                placeholder="smiikogod or sparkygfx"
                 className="w-full px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-white/50"
               />
             </div>
@@ -94,56 +92,6 @@ export default function LoginPage() {
               <Lock className="w-3.5 h-3.5" /> Sign In Securely
             </button>
           </form>
-
-          {/* Quick Access Demo Accounts */}
-          <div className="border-t border-zinc-900 pt-5 space-y-3">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-semibold text-center">
-              Quick Role Testing Logins
-            </p>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('u-smiiko', '/admin')}
-                className="w-full text-left p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-amber-400" /> Smiiko (Founder)
-                  </p>
-                  <p className="text-[10px] text-zinc-400 font-mono">Supreme Admin Authority (Level 1)</p>
-                </div>
-                <span className="text-[10px] font-mono text-amber-300 font-semibold">Enter Admin →</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('u-neon', '/admin')}
-                className="w-full text-left p-2.5 rounded-lg border border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-blue-400" /> Neon The Dev
-                  </p>
-                  <p className="text-[10px] text-zinc-400 font-mono">Executive Director (Level 3)</p>
-                </div>
-                <span className="text-[10px] font-mono text-blue-300 font-semibold">Enter Admin →</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('u-mrtrident', '/dashboard')}
-                className="w-full text-left p-2.5 rounded-lg border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-purple-400" /> MrTrident
-                  </p>
-                  <p className="text-[10px] text-zinc-400 font-mono">Head of Thumbnail Design (Artist Hub)</p>
-                </div>
-                <span className="text-[10px] font-mono text-purple-300 font-semibold">Enter Hub →</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="text-center text-xs text-zinc-500 font-mono space-y-2">

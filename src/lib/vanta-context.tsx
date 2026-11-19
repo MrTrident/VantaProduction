@@ -124,9 +124,9 @@ interface VantaContextType {
 const VantaContext = createContext<VantaContextType | undefined>(undefined);
 
 export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Profiles & Auth State (default: Founder smiikogod)
+  // Profiles & Auth State (default: null / unauthenticated visitor)
   const [profiles, setProfiles] = useState<Profile[]>(INITIAL_PROFILES);
-  const [currentUser, setCurrentUser] = useState<Profile | null>(INITIAL_PROFILES[0]); // Smiiko (Founder)
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   
   // Organization
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);

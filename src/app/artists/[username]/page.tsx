@@ -15,6 +15,7 @@ import {
   Grid,
   Columns,
   Layout,
+  ExternalLink,
 } from 'lucide-react';
 import { TwitterIcon, YoutubeIcon, DiscordIcon, InstagramIcon } from '@/components/social-icons';
 
@@ -119,8 +120,18 @@ function ArtistPortfolioContent() {
               </div>
             </div>
 
-            {/* Social Links */}
-            <div className="flex items-center gap-3">
+            {/* Social & Portfolio Links */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {artist.socialLinks?.portfolio && (
+                <a
+                  href={artist.socialLinks.portfolio}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 h-10 rounded-xl bg-white text-black font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-zinc-200 transition-all shadow-md hover:scale-105 active:scale-95"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Behance Portfolio
+                </a>
+              )}
               {artist.socialLinks?.twitter && (
                 <a
                   href={artist.socialLinks.twitter}
