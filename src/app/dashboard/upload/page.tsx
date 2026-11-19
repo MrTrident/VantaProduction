@@ -12,7 +12,7 @@ export default function UploadArtworkPage() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Thumbnail Design');
   const [mediaType, setMediaType] = useState<'image' | 'video' | 'embed'>('image');
-  const [mediaUrl, setMediaUrl] = useState('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80');
+  const [mediaUrl, setMediaUrl] = useState('/images/thumbnails/sparky-mc-1.png');
   const [externalUrl, setExternalUrl] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,7 +137,7 @@ export default function UploadArtworkPage() {
                 required
                 value={mediaUrl}
                 onChange={(e) => setMediaUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/... or Cloudflare R2 / Supabase Storage link"
+                placeholder="/images/thumbnails/... or Cloudflare R2 / Supabase Storage link"
                 className="w-full px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-white/50"
               />
             </div>

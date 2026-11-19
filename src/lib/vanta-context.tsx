@@ -363,7 +363,7 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       bio: newProfile.bio,
       specialty: inv.departmentName || 'Digital Creative',
       yearsExperience: 2,
-      bannerUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1600&q=80',
+      bannerUrl: '/images/vanta-welcome-banner.jpg',
       themeMode: 'dark',
       layoutMode: 'grid',
       isFeatured: false,

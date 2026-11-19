@@ -14,7 +14,7 @@ export default function AdminCreatorsPage() {
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
   const [channelUrl, setChannelUrl] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80');
+  const [avatarUrl, setAvatarUrl] = useState('https://api.dicebear.com/7.x/bottts/svg?seed=newcreator');
   const [subscribers, setSubscribers] = useState('');
   const [views, setViews] = useState('');
   const [category, setCategory] = useState('Minecraft Gaming');
