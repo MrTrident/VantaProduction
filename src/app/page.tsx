@@ -120,45 +120,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Official Welcome Showcase Banner */}
-      <section className="relative border-b border-white/10 bg-black overflow-hidden py-14 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="relative rounded-3xl overflow-hidden border border-white/15 bg-zinc-950 shadow-[0_25px_60px_rgba(0,0,0,0.9)] group">
-            <img
-              src="/images/vanta-welcome-banner.jpg"
-              alt="Welcome to Vanta Production"
-              className="w-full h-auto object-cover max-h-[520px] transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent pointer-events-none" />
-            <div className="absolute bottom-6 left-6 right-6 sm:bottom-8 sm:left-8 sm:right-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 pointer-events-auto">
-              <div className="max-w-xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 mb-3">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-200">Official Production Hub</span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-bold font-mono text-white leading-snug">
-                  A creative production hub for creators, developers, editors, and designers.
-                </h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/work"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-black font-mono text-xs font-bold uppercase tracking-wider hover:bg-zinc-200 transition-all shadow-xl hover:scale-105 active:scale-95"
-                >
-                  View Archive
-                </Link>
-                <Link
-                  href="/apply"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-900/90 backdrop-blur-xl border border-white/20 text-white font-mono text-xs font-bold uppercase tracking-wider hover:border-white transition-all hover:scale-105 active:scale-95"
-                >
-                  Join Vanta
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Selected Work Section */}
       {homepageConfig.sectionsVisibility?.work && (
         <section id="work" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
