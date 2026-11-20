@@ -72,33 +72,30 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      {/* Database Status & Guide Card */}
+      {/* Infrastructure Security Status */}
       <div className="p-6 rounded-2xl border border-white/10 bg-zinc-950 space-y-4">
         <h3 className="text-xs font-bold uppercase font-mono text-white tracking-wider border-b border-zinc-900 pb-2 flex items-center gap-2">
-          <Database className="w-4 h-4 text-blue-400" /> Database & Storage Infrastructure
+          <Database className="w-4 h-4 text-emerald-400" /> Platform Infrastructure & Data Protection
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
           <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-white font-bold">Supabase PostgreSQL</span>
-              <span className="text-emerald-400 text-[10px]">CONNECTED</span>
+              <span className="text-white font-bold">Encrypted Database Cluster</span>
+              <span className="text-emerald-400 text-[10px] font-bold">SECURE & ISOLATED</span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              Host: <span className="text-zinc-200">yslpywcxgtnssaaynzug.supabase.co</span>
-            </p>
-            <p className="text-[10px] text-zinc-500">
-              Schema: <span className="text-zinc-300">supabase/schema.sql & seed.sql</span>
+              Row-Level Security (RLS) active. Internal connection credentials protected and masked.
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-white font-bold">Cloudflare R2 / Media</span>
-              <span className="text-zinc-400 text-[10px]">READY</span>
+              <span className="text-white font-bold">Media CDN Pipeline</span>
+              <span className="text-emerald-400 text-[10px] font-bold">ACTIVE</span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              High-resolution 4K asset storage and delivery with webp optimization.
+              High-resolution 4K asset storage, delivery caching, and WebP compression.
             </p>
           </div>
         </div>

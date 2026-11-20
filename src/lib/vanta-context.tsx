@@ -9,11 +9,10 @@ import {
   Permission,
   ArtistProfile,
   PortfolioItem,
-  PortfolioRevision,
-  Application,
-  Invitation,
   Creator,
   Service,
+  Application,
+  Invitation,
   Project,
   Task,
   Announcement,
@@ -31,26 +30,25 @@ import {
   INITIAL_PORTFOLIO_ITEMS,
   INITIAL_CREATORS,
   INITIAL_SERVICES,
-  INITIAL_HOMEPAGE_CONFIG,
   INITIAL_APPLICATIONS,
   INITIAL_PROJECTS,
   INITIAL_TASKS,
   INITIAL_ANNOUNCEMENTS,
   INITIAL_AUDIT_LOGS,
-} from '@/lib/data-store';
-import { createClient } from '@/utils/supabase/client';
+  INITIAL_HOMEPAGE_CONFIG,
+} from './data-store';
 
 interface VantaContextType {
-  // Current user & authentication
+  // Current Session & Permissions
   currentUser: Profile | null;
-  currentRole: Role | null;
+  currentRole: Role;
   setCurrentUserById: (userId: string) => void;
   isFounder: boolean;
   isAdmin: boolean;
   isArtist: boolean;
   logout: () => void;
 
-  // Data Collections
+  // Global State Stores
   profiles: Profile[];
   departments: Department[];
   positions: OrganizationalPosition[];
@@ -114,7 +112,7 @@ interface VantaContextType {
   deleteCreator: (id: string) => void;
   updateService: (id: string, updates: Partial<Service>) => void;
 
-  // Projects & Tasks
+  // Project / Task Actions
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
@@ -153,14 +151,50 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
   const [homepageConfig, setHomepageConfig] = useState<HomepageConfig>(INITIAL_HOMEPAGE_CONFIG);
   const [userLikes, setUserLikes] = useState<string[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
 
+  // Hydrate all user changes and active sessions from localStorage on mount
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('vanta_user_likes');
-      if (stored) {
-        setUserLikes(JSON.parse(stored));
+      const storedUser = localStorage.getItem('vanta_current_user');
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
       }
-    } catch {}
+
+      const storedItems = localStorage.getItem('vanta_portfolio_items');
+      if (storedItems) {
+        setPortfolioItems(JSON.parse(storedItems));
+      }
+
+      const storedArtists = localStorage.getItem('vanta_artist_profiles');
+      if (storedArtists) {
+        setArtistProfiles(JSON.parse(storedArtists));
+      }
+
+      const storedProfiles = localStorage.getItem('vanta_profiles');
+      if (storedProfiles) {
+        setProfiles(JSON.parse(storedProfiles));
+      }
+
+      const storedConfig = localStorage.getItem('vanta_homepage_config');
+      if (storedConfig) {
+        setHomepageConfig(JSON.parse(storedConfig));
+      }
+
+      const storedCreators = localStorage.getItem('vanta_creators');
+      if (storedCreators) {
+        setCreators(JSON.parse(storedCreators));
+      }
+
+      const storedLikes = localStorage.getItem('vanta_user_likes');
+      if (storedLikes) {
+        setUserLikes(JSON.parse(storedLikes));
+      }
+    } catch (e) {
+      console.warn('LocalStorage hydration error:', e);
+    } finally {
+      setIsHydrated(true);
+    }
   }, []);
 
   const toggleLike = (projectId: string) => {
@@ -171,8 +205,8 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         localStorage.setItem('vanta_user_likes', JSON.stringify(updated));
       } catch {}
 
-      setPortfolioItems(items =>
-        items.map(item => {
+      setPortfolioItems(items => {
+        const nextItems = items.map(item => {
           if (item.id === projectId) {
             const currentLikes = item.likes || 0;
             return {
@@ -181,8 +215,12 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             };
           }
           return item;
-        })
-      );
+        });
+        try {
+          localStorage.setItem('vanta_portfolio_items', JSON.stringify(nextItems));
+        } catch {}
+        return nextItems;
+      });
 
       return updated;
     });
@@ -190,40 +228,50 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isLiked = (projectId: string) => userLikes.includes(projectId);
 
-  // Attempt to sync from Supabase if tables exist
+  // Real-time synchronization of applications from cloud API
   useEffect(() => {
-    const fetchRemoteConfig = async () => {
+    const fetchApplications = async () => {
       try {
-        const supabase = createClient();
-        const { data } = await supabase.from('homepage_config').select('*').single();
-        if (data) {
-          setHomepageConfig(prev => ({
-            ...prev,
-            heroHeadline: data.hero_headline || prev.heroHeadline,
-            heroSubheading: data.hero_subheading || prev.heroSubheading,
-            enableFloatingArtwork: data.enable_floating_artwork ?? prev.enableFloatingArtwork,
-            floatingSpeed: data.floating_speed ?? prev.floatingSpeed,
-            floatingIntensity: data.floating_intensity ?? prev.floatingIntensity,
-            floatingCount: data.floating_count ?? prev.floatingCount,
-          }));
+        const res = await fetch('/api/applications');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.applications && Array.isArray(data.applications)) {
+            setApplications(prev => {
+              const combined = [...data.applications];
+              for (const p of prev) {
+                if (!combined.some(c => c.id === p.id || (c.email === p.email && c.createdAt === p.createdAt))) {
+                  combined.push(p);
+                }
+              }
+              return combined;
+            });
+          }
         }
-      } catch {
-        // Fallback to local state if tables are not initialized
+      } catch (err) {
+        console.warn('Applications sync note:', err);
       }
     };
-    fetchRemoteConfig();
+    fetchApplications();
+    const interval = setInterval(fetchApplications, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   const setCurrentUserById = (userId: string) => {
     const found = profiles.find(p => p.id === userId);
     if (found) {
       setCurrentUser(found);
+      try {
+        localStorage.setItem('vanta_current_user', JSON.stringify(found));
+      } catch {}
       logAuditEvent('USER_SWITCHED_SESSION', 'User', { userId, username: found.username }, found.id);
     }
   };
 
   const logout = () => {
     setCurrentUser(null);
+    try {
+      localStorage.removeItem('vanta_current_user');
+    } catch {}
   };
 
   const isFounder = currentUser?.isFounder === true;
@@ -254,33 +302,56 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateHomepageConfig = (newConfig: Partial<HomepageConfig>) => {
     setHomepageConfig(prev => {
-      const updated = { ...prev, ...newConfig };
+      const updated = {
+        ...prev,
+        ...newConfig,
+        sectionsVisibility: {
+          ...prev.sectionsVisibility,
+          ...(newConfig.sectionsVisibility || {}),
+        },
+      };
+      try {
+        localStorage.setItem('vanta_homepage_config', JSON.stringify(updated));
+      } catch {}
       logAuditEvent('HOMEPAGE_CONFIG_UPDATED', 'HomepageConfig', { changes: newConfig });
       return updated;
     });
   };
 
   const addPortfolioItem = (itemData: Omit<PortfolioItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const shouldBePublic = itemData.status === 'approved' || isFounder;
     const newItem: PortfolioItem = {
       ...itemData,
       id: `p-${Date.now()}`,
+      status: isFounder ? 'approved' : (itemData.status || 'submitted'),
+      isPublic: shouldBePublic,
       createdAt: new Date().toISOString().substring(0, 10),
       updatedAt: new Date().toISOString().substring(0, 10),
     };
-    setPortfolioItems(prev => [newItem, ...prev]);
+    setPortfolioItems(prev => {
+      const updated = [newItem, ...prev];
+      try {
+        localStorage.setItem('vanta_portfolio_items', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('PORTFOLIO_ITEM_SUBMITTED', 'PortfolioItem', { title: newItem.title, artistId: newItem.artistId }, newItem.id);
   };
 
   const updatePortfolioItem = (id: string, updates: Partial<PortfolioItem>) => {
-    setPortfolioItems(prev =>
-      prev.map(item => (item.id === id ? { ...item, ...updates, updatedAt: new Date().toISOString().substring(0, 10) } : item))
-    );
+    setPortfolioItems(prev => {
+      const updated = prev.map(item => (item.id === id ? { ...item, ...updates, updatedAt: new Date().toISOString().substring(0, 10) } : item));
+      try {
+        localStorage.setItem('vanta_portfolio_items', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('PORTFOLIO_ITEM_UPDATED', 'PortfolioItem', updates, id);
   };
 
   const moderatePortfolioItem = (id: string, status: PortfolioItem['status'], notes?: string) => {
-    setPortfolioItems(prev =>
-      prev.map(item => {
+    setPortfolioItems(prev => {
+      const updated = prev.map(item => {
         if (item.id === id) {
           return {
             ...item,
@@ -291,26 +362,41 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           };
         }
         return item;
-      })
-    );
+      });
+      try {
+        localStorage.setItem('vanta_portfolio_items', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('PORTFOLIO_MODERATED', 'PortfolioItem', { status, notes }, id);
   };
 
   const deletePortfolioItem = (id: string) => {
-    setPortfolioItems(prev => prev.filter(i => i.id !== id));
+    setPortfolioItems(prev => {
+      const updated = prev.filter(i => i.id !== id);
+      try {
+        localStorage.setItem('vanta_portfolio_items', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('PORTFOLIO_ITEM_DELETED', 'PortfolioItem', { id }, id);
   };
 
   const toggleFloatingArtwork = (id: string) => {
-    setPortfolioItems(prev =>
-      prev.map(item => (item.id === id ? { ...item, isFloatingHero: !item.isFloatingHero } : item))
-    );
+    setPortfolioItems(prev => {
+      const updated = prev.map(item => (item.id === id ? { ...item, isFloatingHero: !item.isFloatingHero } : item));
+      try {
+        localStorage.setItem('vanta_portfolio_items', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('PORTFOLIO_FLOATING_TOGGLED', 'PortfolioItem', { id }, id);
   };
 
   const updateArtistProfile = (userId: string, updates: Partial<ArtistProfile>) => {
     setArtistProfiles(prev => {
       const exists = prev.some(p => p.userId === userId);
+      let updatedArtists: ArtistProfile[];
       if (!exists) {
         const user = profiles.find(p => p.id === userId) || currentUser;
         const newProfile: ArtistProfile = {
@@ -331,15 +417,20 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           displayOrder: prev.length + 1,
           ...updates,
         };
-        return [...prev, newProfile];
+        updatedArtists = [...prev, newProfile];
+      } else {
+        updatedArtists = prev.map(p => (p.userId === userId ? { ...p, ...updates } : p));
       }
-      return prev.map(p => (p.userId === userId ? { ...p, ...updates } : p));
+      try {
+        localStorage.setItem('vanta_artist_profiles', JSON.stringify(updatedArtists));
+      } catch {}
+      return updatedArtists;
     });
 
     // Cascade avatar/name changes to portfolio items authored by this user
     if (updates.avatarUrl || updates.displayName) {
-      setPortfolioItems(prev =>
-        prev.map(item =>
+      setPortfolioItems(prev => {
+        const updatedWorks = prev.map(item =>
           item.artistId === userId
             ? {
                 ...item,
@@ -347,23 +438,41 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ...(updates.displayName ? { artistDisplayName: updates.displayName } : {}),
               }
             : item
-        )
-      );
+        );
+        try {
+          localStorage.setItem('vanta_portfolio_items', JSON.stringify(updatedWorks));
+        } catch {}
+        return updatedWorks;
+      });
     }
     logAuditEvent('ARTIST_PROFILE_UPDATED', 'ArtistProfile', updates, userId);
   };
 
   const updateProfile = (userId: string, updates: Partial<Profile>) => {
-    setProfiles(prev =>
-      prev.map(p => (p.id === userId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p))
-    );
+    setProfiles(prev => {
+      const updatedProfiles = prev.map(p => (p.id === userId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
+      try {
+        localStorage.setItem('vanta_profiles', JSON.stringify(updatedProfiles));
+      } catch {}
+      return updatedProfiles;
+    });
+
     if (currentUser?.id === userId) {
-      setCurrentUser(prev => (prev ? { ...prev, ...updates } : null));
+      setCurrentUser(prev => {
+        const updatedUser = prev ? { ...prev, ...updates } : null;
+        try {
+          if (updatedUser) {
+            localStorage.setItem('vanta_current_user', JSON.stringify(updatedUser));
+          }
+        } catch {}
+        return updatedUser;
+      });
     }
+
     // Cascade avatar/name/bio changes across artist profile and portfolio items
     if (updates.avatarUrl || updates.displayName || updates.bio) {
-      setPortfolioItems(prev =>
-        prev.map(item =>
+      setPortfolioItems(prev => {
+        const updatedWorks = prev.map(item =>
           item.artistId === userId
             ? {
                 ...item,
@@ -371,10 +480,15 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ...(updates.displayName ? { artistDisplayName: updates.displayName } : {}),
               }
             : item
-        )
-      );
-      setArtistProfiles(prev =>
-        prev.map(a =>
+        );
+        try {
+          localStorage.setItem('vanta_portfolio_items', JSON.stringify(updatedWorks));
+        } catch {}
+        return updatedWorks;
+      });
+
+      setArtistProfiles(prev => {
+        const updatedArtists = prev.map(a =>
           a.userId === userId
             ? {
                 ...a,
@@ -383,13 +497,17 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ...(updates.bio ? { bio: updates.bio } : {}),
               }
             : a
-        )
-      );
+        );
+        try {
+          localStorage.setItem('vanta_artist_profiles', JSON.stringify(updatedArtists));
+        } catch {}
+        return updatedArtists;
+      });
     }
     logAuditEvent('USER_PROFILE_UPDATED', 'Profile', updates, userId);
   };
 
-  const submitApplication = (appData: Omit<Application, 'id' | 'createdAt' | 'status'>) => {
+  const submitApplication = async (appData: Omit<Application, 'id' | 'createdAt' | 'status'>) => {
     const newApp: Application = {
       ...appData,
       id: `app-${Date.now()}`,
@@ -397,13 +515,35 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       createdAt: new Date().toISOString().substring(0, 10),
     };
     setApplications(prev => [newApp, ...prev]);
+
+    try {
+      await fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appData),
+      });
+    } catch (e) {
+      console.warn('Cloud API application submission fallback:', e);
+    }
+
     logAuditEvent('APPLICATION_SUBMITTED', 'Application', { username: newApp.username, email: newApp.email }, newApp.id);
   };
 
-  const moderateApplication = (id: string, status: Application['status'], notes?: string) => {
+  const moderateApplication = async (id: string, status: Application['status'], notes?: string) => {
     setApplications(prev =>
       prev.map(app => (app.id === id ? { ...app, status, reviewNotes: notes, reviewedBy: currentUser?.displayName } : app))
     );
+
+    try {
+      await fetch('/api/applications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, notes, reviewedBy: currentUser?.displayName }),
+      });
+    } catch (e) {
+      console.warn('Cloud API moderation fallback:', e);
+    }
+
     logAuditEvent('APPLICATION_MODERATED', 'Application', { status, notes }, id);
   };
 
@@ -424,14 +564,14 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       departmentName: department?.name,
       roleId: invData.roleId,
       roleName: role?.name,
+      invitedBy: currentUser?.displayName || 'Founder',
       status: 'pending',
-      invitedBy: currentUser?.displayName || 'System Admin',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date().toISOString().substring(0, 10),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
     };
 
     setInvitations(prev => [newInv, ...prev]);
-    logAuditEvent('INVITATION_CREATED', 'Invitation', { email: newInv.email, username: newInv.username, token: newInv.token }, newInv.id);
+    logAuditEvent('INVITATION_CREATED', 'Invitation', { email: newInv.email, username: newInv.username, token }, newInv.id);
     return newInv;
   };
 
@@ -441,15 +581,14 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return { success: false, message: 'Invalid or expired invitation token.' };
     }
 
-    // Create new profile
-    const newUserId = `u-${Date.now()}`;
     const newProfile: Profile = {
-      id: newUserId,
-      username: inv.username.toLowerCase().replace(/\s+/g, ''),
+      id: `u-${Date.now()}`,
+      username: inv.username,
       displayName: inv.username,
       email: inv.email,
+      password: password || 'artist2024',
       avatarUrl: `https://api.dicebear.com/7.x/identicon/svg?seed=${inv.username}`,
-      bio: `Creative professional at Vanta Production (${inv.departmentName || 'General'}).`,
+      bio: `Creative producer in the ${inv.departmentName || 'Creative'} Department.`,
       isFounder: false,
       status: 'active',
       positionId: inv.positionId,
@@ -460,9 +599,8 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updatedAt: new Date().toISOString().substring(0, 10),
     };
 
-    // Create default artist profile
-    const newArtist: ArtistProfile = {
-      userId: newUserId,
+    const newArtistProfile: ArtistProfile = {
+      userId: newProfile.id,
       username: newProfile.username,
       displayName: newProfile.displayName,
       avatarUrl: newProfile.avatarUrl,
@@ -479,20 +617,40 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       displayOrder: artistProfiles.length + 1,
     };
 
-    setProfiles(prev => [...prev, newProfile]);
-    setArtistProfiles(prev => [...prev, newArtist]);
-    setInvitations(prev => prev.map(i => (i.id === inv.id ? { ...i, status: 'accepted' } : i)));
-    setCurrentUser(newProfile);
+    setProfiles(prev => {
+      const updated = [...prev, newProfile];
+      try {
+        localStorage.setItem('vanta_profiles', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
-    logAuditEvent('INVITATION_ACCEPTED', 'User', { userId: newUserId, username: newProfile.username }, newUserId);
-    return { success: true, message: `Account successfully created for ${inv.username}!` };
+    setArtistProfiles(prev => {
+      const updated = [...prev, newArtistProfile];
+      try {
+        localStorage.setItem('vanta_artist_profiles', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setInvitations(prev =>
+      prev.map(i => (i.id === inv.id ? { ...i, status: 'accepted' } : i))
+    );
+
+    setCurrentUser(newProfile);
+    try {
+      localStorage.setItem('vanta_current_user', JSON.stringify(newProfile));
+    } catch {}
+
+    logAuditEvent('INVITATION_ACCEPTED', 'User', { username: newProfile.username }, newProfile.id);
+    return { success: true, message: 'Welcome to Vanta Production!' };
   };
 
-  // Department & Position Actions
-  const addDepartment = (deptData: Omit<Department, 'id' | 'createdAt'>) => {
+  const addDepartment = (dept: Omit<Department, 'id' | 'createdAt'>) => {
     const newDept: Department = {
-      ...deptData,
-      id: `dept-${Date.now()}`,
+      ...dept,
+      id: `d-${Date.now()}`,
+      memberCount: 0,
       createdAt: new Date().toISOString().substring(0, 10),
     };
     setDepartments(prev => [...prev, newDept]);
@@ -509,14 +667,14 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     logAuditEvent('DEPARTMENT_DELETED', 'Department', { id }, id);
   };
 
-  const addPosition = (posData: Omit<OrganizationalPosition, 'id' | 'createdAt'>) => {
+  const addPosition = (pos: Omit<OrganizationalPosition, 'id' | 'createdAt'>) => {
     const newPos: OrganizationalPosition = {
-      ...posData,
+      ...pos,
       id: `pos-${Date.now()}`,
       createdAt: new Date().toISOString().substring(0, 10),
     };
     setPositions(prev => [...prev, newPos]);
-    logAuditEvent('POSITION_CREATED', 'Position', { title: newPos.title, level: newPos.level }, newPos.id);
+    logAuditEvent('POSITION_CREATED', 'Position', { title: newPos.title }, newPos.id);
   };
 
   const updatePosition = (id: string, updates: Partial<OrganizationalPosition>) => {
@@ -524,45 +682,60 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     logAuditEvent('POSITION_UPDATED', 'Position', updates, id);
   };
 
-  // Staff Promotions & Transfers with Founder Protection
   const promoteStaff = (userId: string, newPositionId: string, notes?: string): { success: boolean; message: string } => {
-    const target = profiles.find(p => p.id === userId);
-    const newPos = positions.find(p => p.id === newPositionId);
+    const pos = positions.find(p => p.id === newPositionId);
+    if (!pos) return { success: false, message: 'Target position does not exist.' };
 
-    if (!target || !newPos) {
-      return { success: false, message: 'Invalid target user or position.' };
-    }
+    setProfiles(prev => {
+      const updated = prev.map(p => {
+        if (p.id === userId) {
+          return {
+            ...p,
+            positionId: pos.id,
+            positionTitle: pos.title,
+            departmentId: pos.departmentId,
+            departmentName: pos.departmentName,
+            updatedAt: new Date().toISOString().substring(0, 10),
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem('vanta_profiles', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
-    // Critical Founder Protection Rule
-    if (target.isFounder && newPos.level > 1) {
-      return { success: false, message: 'CRITICAL SECURITY: The Founder cannot be demoted or have their level altered.' };
-    }
-
-    setProfiles(prev =>
-      prev.map(p => (p.id === userId ? { ...p, positionId: newPos.id, positionTitle: newPos.title, updatedAt: new Date().toISOString() } : p))
-    );
-
-    logAuditEvent('STAFF_PROMOTED', 'Staff', { userId, oldPosition: target.positionTitle, newPosition: newPos.title, notes }, userId);
-    return { success: true, message: `Successfully appointed ${target.displayName} as ${newPos.title}.` };
+    logAuditEvent('STAFF_PROMOTED', 'Personnel', { userId, newPosition: pos.title, notes }, userId);
+    return { success: true, message: `Staff member promoted to ${pos.title}` };
   };
 
   const transferStaff = (userId: string, newDepartmentId: string, notes?: string): { success: boolean; message: string } => {
-    const target = profiles.find(p => p.id === userId);
-    const newDept = departments.find(d => d.id === newDepartmentId);
+    const dept = departments.find(d => d.id === newDepartmentId);
+    if (!dept) return { success: false, message: 'Target department does not exist.' };
 
-    if (!target || !newDept) {
-      return { success: false, message: 'Invalid target user or department.' };
-    }
+    setProfiles(prev => {
+      const updated = prev.map(p => {
+        if (p.id === userId) {
+          return {
+            ...p,
+            departmentId: dept.id,
+            departmentName: dept.name,
+            updatedAt: new Date().toISOString().substring(0, 10),
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem('vanta_profiles', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
-    setProfiles(prev =>
-      prev.map(p => (p.id === userId ? { ...p, departmentId: newDept.id, departmentName: newDept.name, updatedAt: new Date().toISOString() } : p))
-    );
-
-    logAuditEvent('STAFF_TRANSFERRED', 'Staff', { userId, fromDept: target.departmentName, toDept: newDept.name, notes }, userId);
-    return { success: true, message: `Transferred ${target.displayName} to ${newDept.name}.` };
+    logAuditEvent('STAFF_TRANSFERRED', 'Personnel', { userId, newDepartment: dept.name, notes }, userId);
+    return { success: true, message: `Staff member transferred to ${dept.name}` };
   };
 
-  // Custom Roles & Permissions Builder
   const addRole = (roleData: Omit<Role, 'id' | 'createdAt'>) => {
     const newRole: Role = {
       ...roleData,
@@ -570,7 +743,7 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       createdAt: new Date().toISOString().substring(0, 10),
     };
     setRoles(prev => [...prev, newRole]);
-    logAuditEvent('ROLE_CREATED', 'Role', { name: newRole.name, scope: newRole.scope }, newRole.id);
+    logAuditEvent('ROLE_CREATED', 'Role', { name: newRole.name }, newRole.id);
   };
 
   const updateRole = (id: string, updates: Partial<Role>) => {
@@ -579,33 +752,45 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deleteRole = (id: string) => {
-    const role = roles.find(r => r.id === id);
-    if (role?.isSystem) {
-      alert('System roles cannot be deleted.');
-      return;
-    }
     setRoles(prev => prev.filter(r => r.id !== id));
     logAuditEvent('ROLE_DELETED', 'Role', { id }, id);
   };
 
-  // Creators & Services
   const addCreator = (creatorData: Omit<Creator, 'id' | 'createdAt'>) => {
     const newCreator: Creator = {
       ...creatorData,
       id: `c-${Date.now()}`,
       createdAt: new Date().toISOString().substring(0, 10),
     };
-    setCreators(prev => [...prev, newCreator]);
+    setCreators(prev => {
+      const updated = [newCreator, ...prev];
+      try {
+        localStorage.setItem('vanta_creators', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('CREATOR_ADDED', 'Creator', { name: newCreator.name }, newCreator.id);
   };
 
   const updateCreator = (id: string, updates: Partial<Creator>) => {
-    setCreators(prev => prev.map(c => (c.id === id ? { ...c, ...updates } : c)));
+    setCreators(prev => {
+      const updated = prev.map(c => (c.id === id ? { ...c, ...updates } : c));
+      try {
+        localStorage.setItem('vanta_creators', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('CREATOR_UPDATED', 'Creator', updates, id);
   };
 
   const deleteCreator = (id: string) => {
-    setCreators(prev => prev.filter(c => c.id !== id));
+    setCreators(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      try {
+        localStorage.setItem('vanta_creators', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     logAuditEvent('CREATOR_DELETED', 'Creator', { id }, id);
   };
 
@@ -614,7 +799,6 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     logAuditEvent('SERVICE_UPDATED', 'Service', updates, id);
   };
 
-  // Tasks & Projects
   const addTask = (taskData: Omit<Task, 'id' | 'createdAt'>) => {
     const newTask: Task = {
       ...taskData,
@@ -622,7 +806,7 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       createdAt: new Date().toISOString().substring(0, 10),
     };
     setTasks(prev => [newTask, ...prev]);
-    logAuditEvent('TASK_CREATED', 'Task', { title: newTask.title, project: newTask.projectTitle }, newTask.id);
+    logAuditEvent('TASK_CREATED', 'Task', { title: newTask.title }, newTask.id);
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {

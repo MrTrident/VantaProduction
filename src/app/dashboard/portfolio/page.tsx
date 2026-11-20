@@ -151,22 +151,27 @@ export default function ArtistPortfolioManagementPage() {
                 </button>
 
                 <div className="flex items-center gap-2">
-                  {item.status === 'draft' && (
-                    <button
-                      onClick={() => handlePublishDraft(item.id)}
-                      className="px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-center gap-1"
-                    >
-                      <Send className="w-3 h-3" /> Submit
-                    </button>
-                  )}
-
                   <button
                     onClick={() => {
-                      if (confirm('Delete this portfolio project?')) {
-                        deletePortfolioItem(item.id);
-                      }
+                      const nextStatus = item.status === 'approved' ? 'draft' : 'approved';
+                      updatePortfolioItem(item.id, {
+                        status: nextStatus,
+                        isPublic: nextStatus === 'approved',
+                      });
                     }}
-                    className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      item.status === 'approved'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
+                        : 'bg-white/10 text-zinc-200 border border-white/20 hover:bg-white hover:text-black font-semibold'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {item.status === 'approved' ? 'Public' : 'Publish'}
+                  </button>
+
+                  <button
+                    onClick={() => deletePortfolioItem(item.id)}
+                    className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                     title="Delete Project"
                   >
                     <Trash2 className="w-4 h-4" />

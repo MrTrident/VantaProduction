@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
@@ -122,9 +123,18 @@ function ArtistPortfolioContent() {
 
             {/* Social & Portfolio Links */}
             <div className="flex items-center gap-3 flex-wrap">
-              {artist.socialLinks?.portfolio && (
+              {currentUser?.username?.toLowerCase() === artist.username.toLowerCase() && (
+                <Link
+                  href="/dashboard/profile"
+                  className="px-4 h-10 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/40 font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-amber-400/30 transition-all shadow-md"
+                >
+                  Edit Profile
+                </Link>
+              )}
+
+              {(artist.socialLinks?.behance || artist.socialLinks?.portfolio) && (
                 <a
-                  href={artist.socialLinks.portfolio}
+                  href={artist.socialLinks?.behance || artist.socialLinks?.portfolio}
                   target="_blank"
                   rel="noreferrer"
                   className="px-4 h-10 rounded-xl bg-white text-black font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-zinc-200 transition-all shadow-md hover:scale-105 active:scale-95"

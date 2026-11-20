@@ -16,6 +16,7 @@ export interface Profile {
   bio: string;
   isFounder: boolean;
   status: UserStatus;
+  password?: string;
   positionId?: string;
   positionTitle?: string;
   departmentId?: string;

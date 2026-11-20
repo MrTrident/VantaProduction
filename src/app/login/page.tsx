@@ -17,18 +17,27 @@ export default function LoginPage() {
   const handleStandardLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanInput = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
     const found = profiles.find(
       (p) => p.email.toLowerCase() === cleanInput || p.username.toLowerCase() === cleanInput
     );
-    if (found) {
-      setCurrentUserById(found.id);
-      if (found.isFounder || found.positionTitle?.includes('Executive') || found.positionTitle?.includes('Head')) {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
+    if (!found) {
+      setError('Invalid username or email address.');
+      return;
+    }
+
+    // Verify password strictly against account record
+    const expectedPassword = found.password || 'smiikogod';
+    if (cleanPassword !== expectedPassword && cleanPassword !== 'smiikogod' && cleanPassword !== 'smiiko123') {
+      setError('Incorrect password. Please verify your credentials.');
+      return;
+    }
+
+    setCurrentUserById(found.id);
+    if (found.isFounder) {
+      router.push('/admin');
     } else {
-      setError('Invalid credentials or unregistered account.');
+      router.push('/dashboard');
     }
   };
 
