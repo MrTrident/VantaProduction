@@ -2,22 +2,54 @@
 
 import React, { useState } from 'react';
 import { useVanta } from '@/lib/vanta-context';
-import { Settings, Lock, Shield, CheckCircle2 } from 'lucide-react';
+import { Settings, Lock, Shield, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function DashboardSettingsPage() {
   const { currentUser } = useVanta();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   if (!currentUser) return null;
 
-  const handlePasswordUpdate = (e: React.FormEvent) => {
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordSaved(true);
-    setCurrentPassword('');
-    setNewPassword('');
-    setTimeout(() => setPasswordSaved(false), 3000);
+    setError('');
+    setPasswordSaved(false);
+
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(data.error || 'Failed to update password.');
+        setLoading(false);
+        return;
+      }
+
+      setPasswordSaved(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setTimeout(() => setPasswordSaved(false), 5000);
+    } catch (err: any) {
+      setError('Network error while updating password.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,10 +98,17 @@ export default function DashboardSettingsPage() {
             </h3>
             {passwordSaved && (
               <span className="flex items-center gap-1 text-xs font-mono text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" /> Password Updated!
+                <CheckCircle2 className="w-4 h-4" /> Password Updated Securely!
               </span>
             )}
           </div>
+
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs font-mono text-red-400 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <form onSubmit={handlePasswordUpdate} className="space-y-4 max-w-md">
             <div>
@@ -79,6 +118,7 @@ export default function DashboardSettingsPage() {
               <input
                 type="password"
                 required
+                disabled={loading}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-white/50"
@@ -92,17 +132,21 @@ export default function DashboardSettingsPage() {
               <input
                 type="password"
                 required
+                disabled={loading}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 8 characters"
                 className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-white/50"
               />
             </div>
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-zinc-200 transition-colors"
+              disabled={loading}
+              className="px-6 py-2.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-zinc-200 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              Update Password
+              {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>{loading ? 'Updating...' : 'Update Password'}</span>
             </button>
           </form>
         </div>

@@ -1,17 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useVanta } from '@/lib/vanta-context';
-import { ScrollText, Search, Shield, Filter } from 'lucide-react';
+import { ScrollText, Search, Shield, Filter, Loader2 } from 'lucide-react';
+import { AuditLog } from '@/types';
 
 export default function AdminAuditLogsPage() {
-  const { auditLogs } = useVanta();
+  const { auditLogs: contextLogs } = useVanta();
+  const [logs, setLogs] = useState<AuditLog[]>(contextLogs);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedAction, setSelectedAction] = useState('all');
 
-  const actionTypes = ['all', ...Array.from(new Set(auditLogs.map((l) => l.action)))];
+  useEffect(() => {
+    fetch('/api/admin/audit-logs')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.auditLogs && Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
+          setLogs(data.auditLogs);
+        }
+      })
+      .catch((err) => console.warn('Audit logs fetch notice:', err))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filteredLogs = auditLogs.filter((log) => {
+  const actionTypes = ['all', ...Array.from(new Set(logs.map((l) => l.action)))];
+
+  const filteredLogs = logs.filter((log) => {
     const matchesAction = selectedAction === 'all' || log.action === selectedAction;
     const matchesSearch =
       log.action.toLowerCase().includes(search.toLowerCase()) ||
@@ -31,7 +46,7 @@ export default function AdminAuditLogsPage() {
           System Audit Logs
         </h1>
         <p className="mt-1 text-xs text-zinc-400">
-          Chronological record of all administrative approvals, personnel promotions, role assignments, and CMS updates.
+          Chronological record of all administrative approvals, personnel promotions, role assignments, and CMS updates stored in PostgreSQL.
         </p>
       </div>
 
@@ -61,41 +76,50 @@ export default function AdminAuditLogsPage() {
         </select>
       </div>
 
-      {/* Logs Table */}
+      {/* Audit Log Table */}
       <div className="rounded-2xl border border-white/10 bg-zinc-950 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-zinc-900/60 text-zinc-400 uppercase text-[10px] border-b border-zinc-900">
+            <thead className="bg-zinc-900/60 border-b border-zinc-800 text-zinc-400 uppercase text-[10px]">
               <tr>
-                <th className="p-4">Timestamp</th>
-                <th className="p-4">Action Event</th>
-                <th className="p-4">Actor</th>
-                <th className="p-4">Entity</th>
-                <th className="p-4">Event Payload Details</th>
+                <th className="py-3 px-4">Timestamp</th>
+                <th className="py-3 px-4">Action</th>
+                <th className="py-3 px-4">Actor</th>
+                <th className="py-3 px-4">Entity</th>
+                <th className="py-3 px-4">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-900 text-zinc-300">
-              {filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-zinc-900/40 transition-colors">
-                  <td className="p-4 text-zinc-500 whitespace-nowrap">
-                    {log.createdAt}
-                  </td>
-                  <td className="p-4">
-                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                      {log.action}
-                    </span>
-                  </td>
-                  <td className="p-4 font-bold text-white whitespace-nowrap">
-                    {log.userName}
-                  </td>
-                  <td className="p-4 text-zinc-400">
-                    {log.entityType}
-                  </td>
-                  <td className="p-4 text-[11px] text-zinc-400 max-w-md truncate font-mono">
-                    {JSON.stringify(log.details)}
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-zinc-500">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-zinc-400" />
+                    <span>Loading immutable audit records from database...</span>
                   </td>
                 </tr>
-              ))}
+              ) : filteredLogs.length > 0 ? (
+                filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-zinc-900/40 transition-colors">
+                    <td className="py-3 px-4 text-zinc-500 whitespace-nowrap">{log.createdAt}</td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-white/5 border border-white/10 font-bold text-white">
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-white font-bold">{log.userName}</td>
+                    <td className="py-3 px-4 text-zinc-400">{log.entityType}</td>
+                    <td className="py-3 px-4 text-zinc-400 max-w-xs truncate">
+                      {typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-zinc-500">
+                    No audit records matching criteria.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -42,6 +42,7 @@ interface VantaContextType {
   // Current Session & Permissions
   currentUser: Profile | null;
   currentRole: Role;
+  setCurrentUser: (user: Profile | null) => void;
   setCurrentUserById: (userId: string) => void;
   isFounder: boolean;
   isAdmin: boolean;
@@ -153,29 +154,53 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [userLikes, setUserLikes] = useState<string[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Hydrate all user changes and active sessions from localStorage on mount
+  // Hydrate all user changes and active sessions from localStorage on mount and sync with server
   useEffect(() => {
+    // 1. Check real server session
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : { user: null })
+      .then(data => {
+        if (data?.user) {
+          setCurrentUser(data.user);
+          try {
+            localStorage.setItem('vanta_current_user', JSON.stringify(data.user));
+          } catch {}
+        } else {
+          setCurrentUser(null);
+          try {
+            localStorage.removeItem('vanta_current_user');
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    // 2. Fetch real database portfolio items
+    fetch('/api/portfolio?scope=public')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          setPortfolioItems(data.items);
+          try {
+            localStorage.setItem('vanta_portfolio_items', JSON.stringify(data.items));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    // 3. Fetch real database artist profiles
+    fetch('/api/artists')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.artists && Array.isArray(data.artists) && data.artists.length > 0) {
+          setArtistProfiles(data.artists);
+          try {
+            localStorage.setItem('vanta_artist_profiles', JSON.stringify(data.artists));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
     try {
-      const storedUser = localStorage.getItem('vanta_current_user');
-      if (storedUser) {
-        setCurrentUser(JSON.parse(storedUser));
-      }
-
-      const storedItems = localStorage.getItem('vanta_portfolio_items');
-      if (storedItems) {
-        setPortfolioItems(JSON.parse(storedItems));
-      }
-
-      const storedArtists = localStorage.getItem('vanta_artist_profiles');
-      if (storedArtists) {
-        setArtistProfiles(JSON.parse(storedArtists));
-      }
-
-      const storedProfiles = localStorage.getItem('vanta_profiles');
-      if (storedProfiles) {
-        setProfiles(JSON.parse(storedProfiles));
-      }
-
       const storedConfig = localStorage.getItem('vanta_homepage_config');
       if (storedConfig) {
         setHomepageConfig(JSON.parse(storedConfig));
@@ -267,11 +292,15 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
     setCurrentUser(null);
     try {
       localStorage.removeItem('vanta_current_user');
     } catch {}
+    window.location.href = '/login';
   };
 
   const isFounder = currentUser?.isFounder === true;
@@ -350,6 +379,12 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const moderatePortfolioItem = (id: string, status: PortfolioItem['status'], notes?: string) => {
+    fetch('/api/portfolio', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status, moderationNotes: notes }),
+    }).catch(err => console.warn('Portfolio moderation API warning:', err));
+
     setPortfolioItems(prev => {
       const updated = prev.map(item => {
         if (item.id === id) {
@@ -372,6 +407,9 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deletePortfolioItem = (id: string) => {
+    fetch(`/api/portfolio?id=${id}`, { method: 'DELETE' })
+      .catch(err => console.warn('Portfolio delete API warning:', err));
+
     setPortfolioItems(prev => {
       const updated = prev.filter(i => i.id !== id);
       try {
@@ -384,7 +422,15 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleFloatingArtwork = (id: string) => {
     setPortfolioItems(prev => {
-      const updated = prev.map(item => (item.id === id ? { ...item, isFloatingHero: !item.isFloatingHero } : item));
+      const target = prev.find(i => i.id === id);
+      const nextHero = !target?.isFloatingHero;
+      fetch('/api/portfolio', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isFloatingHero: nextHero }),
+      }).catch(err => console.warn('Floating hero toggle warning:', err));
+
+      const updated = prev.map(item => (item.id === id ? { ...item, isFloatingHero: nextHero } : item));
       try {
         localStorage.setItem('vanta_portfolio_items', JSON.stringify(updated));
       } catch {}
@@ -394,6 +440,12 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateArtistProfile = (userId: string, updates: Partial<ArtistProfile>) => {
+    fetch('/api/artists', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, ...updates }),
+    }).catch(err => console.warn('Artist profile update API warning:', err));
+
     setArtistProfiles(prev => {
       const exists = prev.some(p => p.userId === userId);
       let updatedArtists: ArtistProfile[];
@@ -836,6 +888,7 @@ export const VantaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         currentUser,
         currentRole,
+        setCurrentUser,
         setCurrentUserById,
         isFounder,
         isAdmin,

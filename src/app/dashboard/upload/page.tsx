@@ -3,19 +3,31 @@
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useVanta } from '@/lib/vanta-context';
-import { UploadCloud, Image as ImageIcon, Eye, CheckCircle2, ArrowRight, Upload } from 'lucide-react';
+import {
+  UploadCloud,
+  Eye,
+  CheckCircle2,
+  Sparkles,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Upload,
+  Loader2,
+  AlertCircle
+} from 'lucide-react';
 
-export default function UploadArtworkPage() {
+export default function DashboardUploadPage() {
   const router = useRouter();
   const { currentUser, addPortfolioItem } = useVanta();
 
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Minecraft Development');
-  const [mediaType, setMediaType] = useState<'image' | 'video' | 'embed'>('image');
-  const [mediaUrl, setMediaUrl] = useState('/images/vanta-welcome-banner.jpg');
-  const [externalUrl, setExternalUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Minecraft Development');
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaType, setMediaType] = useState<'image' | 'video' | 'embed'>('image');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!currentUser) return null;
@@ -29,55 +41,103 @@ export default function UploadArtworkPage() {
     'Web Development',
   ];
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setMediaUrl(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setUploadError('');
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setUploadError(data.error || 'Failed to upload asset.');
+        setIsUploading(false);
+        return;
+      }
+
+      setMediaUrl(data.url);
+    } catch (err: any) {
+      setUploadError('Network error uploading file to storage.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleAction = (status: 'draft' | 'submitted' | 'approved') => {
+  const handleAction = async () => {
     if (!title.trim()) {
       alert('Please provide a project title.');
       return;
     }
     if (!mediaUrl.trim()) {
-      alert('Please provide a media preview image.');
+      alert('Please provide a media preview image or upload an asset.');
       return;
     }
 
     setIsSubmitting(true);
+    setUploadError('');
 
-    const isDirectApproved = status === 'approved' || currentUser.isFounder;
+    try {
+      const res = await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          mediaUrl: mediaUrl.trim(),
+          thumbnailUrl: mediaUrl.trim(),
+          externalUrl: externalUrl.trim(),
+        }),
+      });
 
-    addPortfolioItem({
-      artistId: currentUser.id,
-      artistUsername: currentUser.username,
-      artistDisplayName: currentUser.displayName,
-      artistAvatarUrl: currentUser.avatarUrl,
-      title: title.trim(),
-      description: description.trim(),
-      category,
-      mediaUrl: mediaUrl.trim(),
-      mediaType,
-      externalUrl: externalUrl.trim(),
-      status: isDirectApproved ? 'approved' : status,
-      isFeatured: isDirectApproved,
-      isFloatingHero: isDirectApproved,
-      isPublic: isDirectApproved,
-      views: 140,
-      likes: 18,
-    });
+      const data = await res.json();
 
-    setTimeout(() => {
-      router.push('/dashboard/portfolio');
-    }, 600);
+      if (!res.ok || !data.success) {
+        setUploadError(data.error || 'Failed to submit deliverable.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const isDirectApproved = data.status === 'approved';
+
+      // Synchronize in local context
+      addPortfolioItem({
+        artistId: currentUser.id,
+        artistUsername: currentUser.username,
+        artistDisplayName: currentUser.displayName,
+        artistAvatarUrl: currentUser.avatarUrl,
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        mediaUrl: mediaUrl.trim(),
+        thumbnailUrl: mediaUrl.trim(),
+        mediaType,
+        externalUrl: externalUrl.trim(),
+        status: isDirectApproved ? 'approved' : 'submitted',
+        isFeatured: isDirectApproved,
+        isFloatingHero: isDirectApproved,
+        isPublic: isDirectApproved,
+        views: 0,
+        likes: 0,
+      });
+
+      setTimeout(() => {
+        router.push('/dashboard/portfolio');
+      }, 500);
+    } catch (err: any) {
+      setUploadError('Network error submitting portfolio deliverable.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -88,9 +148,16 @@ export default function UploadArtworkPage() {
           Submit Artwork Deliverable
         </h1>
         <p className="mt-1 text-xs text-zinc-400">
-          Upload your project assets for department quality assurance and public showcase curation.
+          Upload your project assets directly to secure cloud storage for department quality assurance and public showcase curation.
         </p>
       </div>
+
+      {uploadError && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-xs font-mono text-red-400 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{uploadError}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Form Column */}
@@ -146,30 +213,37 @@ export default function UploadArtworkPage() {
 
             <div>
               <label className="block text-xs font-mono uppercase text-zinc-400 mb-1.5">
-                Media Asset (File Upload or URL) *
+                Media Asset (Direct Cloud Storage Upload) *
               </label>
-              <div className="flex gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2">
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp,video/mp4"
                   className="hidden"
                 />
                 <button
                   type="button"
+                  disabled={isUploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-white text-black font-mono font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-zinc-200 transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                  className="px-4 py-2 bg-white text-black font-mono font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-zinc-200 transition-all flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
                 >
-                  <Upload className="w-3.5 h-3.5" /> Upload Image File
+                  {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  <span>{isUploading ? 'Uploading to Storage...' : 'Upload Image / Video File'}</span>
                 </button>
+                {mediaUrl && (
+                  <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> File Stored
+                  </span>
+                )}
               </div>
               <input
                 type="text"
                 required
                 value={mediaUrl}
                 onChange={(e) => setMediaUrl(e.target.value)}
-                placeholder="/images/... or https://..."
+                placeholder="Uploaded cloud storage URL"
                 className="w-full px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-white/50"
               />
             </div>
@@ -205,20 +279,21 @@ export default function UploadArtworkPage() {
           <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-zinc-900">
             <button
               type="button"
-              disabled={isSubmitting}
-              onClick={() => handleAction('approved')}
-              className="w-full sm:flex-1 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+              disabled={isSubmitting || isUploading}
+              onClick={handleAction}
+              className="w-full sm:flex-1 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
             >
-              <UploadCloud className="w-4 h-4" /> Publish to Public Portfolio
-            </button>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleAction('draft')}
-              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Save as Draft
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Submitting Deliverable...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud className="w-4 h-4" />
+                  <span>{currentUser.isFounder ? 'Publish to Public Portfolio' : 'Submit for Curation Review'}</span>
+                </>
+              )}
             </button>
           </div>
         </div>

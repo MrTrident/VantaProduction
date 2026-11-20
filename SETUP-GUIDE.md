@@ -18,10 +18,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 2. DATABASE CONFIGURATION (SUPABASE)
 
-Your Supabase project is already provisioned and connected via `.env.local`:
-- **Project URL:** `https://yslpywcxgtnssaaynzug.supabase.co`
-- **Publishable Key:** `sb_publishable_urgoh6Q3NyqPSh5Lrtzr_w_EPEcB3HH`
-- **Database Password:** `vantaneverdies`
+Your Supabase project is configured via environment variables:
+- **Project URL:** `NEXT_PUBLIC_SUPABASE_URL`
+- **Publishable Key:** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- **Database Password:** Store securely in your private deployment environment. Never commit to repository.
 
 ### Step 1: Run the Database Migration
 1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard/project/yslpywcxgtnssaaynzug).

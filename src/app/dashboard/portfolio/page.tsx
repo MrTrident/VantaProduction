@@ -25,15 +25,49 @@ export default function ArtistPortfolioManagementPage() {
   if (!currentUser) return null;
 
   const userItems = portfolioItems.filter(
-    (item) => item.artistUsername.toLowerCase() === currentUser.username.toLowerCase()
+    (item) => item.artistUsername.toLowerCase() === currentUser.username.toLowerCase() || item.artistId === currentUser.id
   );
 
   const filteredItems = activeTab === 'all'
     ? userItems
     : userItems.filter((i) => i.status === activeTab);
 
-  const handlePublishDraft = (id: string) => {
-    updatePortfolioItem(id, { status: 'submitted' });
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/portfolio?id=${id}`, { method: 'DELETE' });
+    } catch {}
+    deletePortfolioItem(id);
+  };
+
+  const handleStatusToggle = async (item: PortfolioItem) => {
+    const isFounder = currentUser.isFounder;
+
+    if (isFounder) {
+      const nextStatus = item.status === 'approved' ? 'draft' : 'approved';
+      try {
+        await fetch('/api/portfolio', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: item.id, status: nextStatus }),
+        });
+      } catch {}
+      updatePortfolioItem(item.id, {
+        status: nextStatus,
+        isPublic: nextStatus === 'approved',
+      });
+    } else {
+      // Ordinary artist: can submit draft for review, cannot approve own item
+      if (item.status === 'draft' || item.status === 'changes_requested') {
+        try {
+          await fetch('/api/portfolio', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: item.id, status: 'submitted' }),
+          });
+        } catch {}
+        updatePortfolioItem(item.id, { status: 'submitted', isPublic: false });
+      }
+    }
   };
 
   const statusBadges = {
@@ -60,7 +94,7 @@ export default function ArtistPortfolioManagementPage() {
 
         <Link
           href="/dashboard/upload"
-          className="px-5 py-2.5 rounded-lg bg-white text-black font-bold text-xs font-mono uppercase tracking-wider hover:bg-zinc-200 transition-colors flex items-center gap-2 self-start sm:self-auto"
+          className="px-5 py-2.5 rounded-lg bg-white text-black font-bold text-xs font-mono uppercase tracking-wider hover:bg-zinc-200 transition-colors flex items-center gap-2 self-start sm:self-auto shadow-md"
         >
           <UploadCloud className="w-4 h-4" /> Upload New Project
         </Link>
@@ -145,32 +179,39 @@ export default function ArtistPortfolioManagementPage() {
               <div className="p-4 border-t border-zinc-900 flex items-center justify-between gap-2">
                 <button
                   onClick={() => setPreviewProject(item)}
-                  className="px-3 py-1.5 rounded bg-zinc-900 text-zinc-300 hover:text-white text-xs font-mono flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded bg-zinc-900 text-zinc-300 hover:text-white text-xs font-mono flex items-center gap-1.5 cursor-pointer"
                 >
                   <Eye className="w-3.5 h-3.5" /> Preview
                 </button>
 
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const nextStatus = item.status === 'approved' ? 'draft' : 'approved';
-                      updatePortfolioItem(item.id, {
-                        status: nextStatus,
-                        isPublic: nextStatus === 'approved',
-                      });
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
-                      item.status === 'approved'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
-                        : 'bg-white/10 text-zinc-200 border border-white/20 hover:bg-white hover:text-black font-semibold'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    {item.status === 'approved' ? 'Public' : 'Publish'}
-                  </button>
+                  {currentUser.isFounder ? (
+                    <button
+                      onClick={() => handleStatusToggle(item)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        item.status === 'approved'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
+                          : 'bg-white/10 text-zinc-200 border border-white/20 hover:bg-white hover:text-black font-semibold'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {item.status === 'approved' ? 'Public' : 'Publish'}
+                    </button>
+                  ) : item.status === 'draft' || item.status === 'changes_requested' ? (
+                    <button
+                      onClick={() => handleStatusToggle(item)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 font-semibold"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Submit for Review
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-mono text-zinc-500 px-2">
+                      {item.status === 'approved' ? 'Live on Portfolio' : 'Under Review'}
+                    </span>
+                  )}
 
                   <button
-                    onClick={() => deletePortfolioItem(item.id)}
+                    onClick={() => handleDelete(item.id)}
                     className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                     title="Delete Project"
                   >
