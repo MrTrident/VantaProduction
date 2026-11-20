@@ -87,11 +87,57 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg"
             >
               <Lock className="w-3.5 h-3.5" /> Sign In Securely
             </button>
           </form>
+
+          {/* Quick 1-Click Access */}
+          <div className="pt-4 border-t border-zinc-800/80 space-y-2.5">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 text-center">
+              Quick 1-Click Team Access
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentUserById('u-smiiko');
+                  router.push('/admin');
+                }}
+                className="p-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 text-left transition-all cursor-pointer flex items-center gap-2.5"
+              >
+                <img
+                  src="/images/vanta-logo.jpg"
+                  alt="SmiikoGod"
+                  className="w-7 h-7 rounded-full object-cover border border-amber-400/40"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-mono font-bold text-white truncate">SmiikoGod</p>
+                  <p className="text-[10px] font-mono text-amber-300">Founder Access →</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentUserById('u-sparky');
+                  router.push('/dashboard');
+                }}
+                className="p-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-left transition-all cursor-pointer flex items-center gap-2.5"
+              >
+                <img
+                  src="/images/sparky-pfp.jpg"
+                  alt="SparkyGFX"
+                  className="w-7 h-7 rounded-full object-cover border border-white/20"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-mono font-bold text-white truncate">SparkyGFX</p>
+                  <p className="text-[10px] font-mono text-zinc-300">Artist Access →</p>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="text-center text-xs text-zinc-500 font-mono space-y-2">
